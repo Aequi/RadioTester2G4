@@ -430,6 +430,17 @@ function cloneModules(modules) {
   return modules.map((module) => ({ ...module }));
 }
 
+function moduleSettingsMatch(left, right) {
+  return left.every((module, index) => {
+    const other = right[index];
+    return other
+      && module.enabled === other.enabled
+      && module.startChannel === other.startChannel
+      && module.stopChannel === other.stopChannel
+      && module.power === other.power;
+  });
+}
+
 function createModuleButtons() {
   for (let module = 0; module < MODULE_COUNT; module += 1) {
     const button = document.createElement("button");
@@ -533,7 +544,7 @@ function updateRfUi() {
 }
 
 function markSettingsChanged() {
-  state.dirty = JSON.stringify(state.modules) !== JSON.stringify(state.deviceModules);
+  state.dirty = !moduleSettingsMatch(state.modules, state.deviceModules);
   updateRfUi();
 }
 
@@ -590,10 +601,11 @@ function acceptStatus(packet, payloadOffset, hasCommandSequence, forceSync = fal
   state.revision = revision;
   state.commandSequence = commandSequence;
   state.deviceModules = cloneModules(modules);
-  if (!state.dirty || command === COMMAND.SET_SETTINGS
-      || state.pendingCommand?.forceSync || forceSync) {
+  if (!state.dirty || state.pendingCommand?.forceSync || forceSync) {
     state.modules = cloneModules(modules);
     state.dirty = false;
+  } else {
+    state.dirty = !moduleSettingsMatch(state.modules, state.deviceModules);
   }
   state.settingsKnown = true;
   updateSourceUi();
